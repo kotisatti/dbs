@@ -1,0 +1,105 @@
+Design Consideration Caching Library with Python
+=================================================
+Python has built in features for caching, this can build using dictionary like flexible data structure or using the complete data structure such as lru_cache.
+When an application is running through large platform like when distributed across the network, the cache also needs to be distributed.
+
+
+Below are the design properties for the caching library
+
+Sub-millisecond Latency:
+		This can be achieved through the caching in python.The implementation can be done through Python Dictionary which is a flexible datastructure to store the data.
+		The caching can be implemented through the LRU(Least Recetly Used) strategy.
+		A cache implemented using the LRU strategy organizes its items in order of use. Every time you access an entry, the LRU algorithm will move it to the top of the cache. This way, the algorithm can quickly identify the entry that’s gone unused the longest by looking at the bottom of the list.
+		
+MultiProcessing
+		Multiple user requests can be handled using the multiprocessing
+		
+Automic Failover
+		The concurrency fail over can be overcomed using the Check and Set operations(CAS)
+		
+Pub/Sub messaging
+		Python has rich API like PubNub which provides the messaging
+		
+GeoSpatial Support
+		Python has inbuild libraries like geopandas and shapes.geometry to measure the geospatial distance. 
+		
+
+Program to implement the caching
+================================
+
+from functools import lru_cache
+import requests
+from multiprocessing import Pool
+#Import the pub/sub libraries
+from pubnub.enums import PNStatusCategory
+from pubnub.pnconfiguration import PNConfiguration
+from pubnub.pubnub import PubNub, SubscribeListener
+#Importing libraries for geospatial support
+import geopandas
+import numpy as np
+import pandas as pd
+from shapely.geometry import Point
+import missingno as msn
+#libraries for visualization
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+#Initializing the cache with empty dictionary
+
+cache = dict()
+
+def extract_info_from_server(url):
+    print("Fetching article from server...")
+    response = requests.get(url)
+    return response.text
+
+
+#Implementing the lru cache technique to build cache with max 30  cache entries , and extracting the url if present in cache
+#else the url is extracted from server and added to the cache
+
+def extract_info(url):
+    print("Getting article...")
+    if url not in cache:
+        cache[url] = get_article_from_server(url)
+
+    return cache[url]
+
+
+		
+url_array = ["https://realpython.com/sorting-algorithms-python/", "https://www.w3schools.com/python/", "https://www.google.com"]
+
+#Implementing MultiProcessing
+
+p = Pool()
+result = p.map(extract_info, url_array)
+print(result)
+
+#To get the cache performance
+print(extract_info.cache_info())
+
+#Implementing pub/sub messaging
+
+pnconfig = PNConfiguration()
+
+pnconfig.publish_key = 'demo'
+pnconfig.subscribe_key = 'demo'
+
+pubnub = PubNub(pnconfig)
+
+my_listener = SubscribeListener()
+pubnub.add_listener(my_listener)
+
+pubnub.subscribe().channels('awesomeChannel').execute()
+my_listener.wait_for_connect()
+print('connected')
+
+pubnub.publish().channel('awesomeChannel').message({'fieldA': 'awesome', 'fieldB': 10}).sync()
+result = my_listener.wait_for_message_on('awesomeChannel')
+print(result.message)
+
+pubnub.unsubscribe().channels('awesomeChannel').execute()
+my_listener.wait_for_disconnect()
+
+print('unsubscribed')
+
+
